@@ -13,7 +13,6 @@ def log(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}")
 
 def transformar_empresas(input_file, output_file):
-    """Transforma el archivo de empresas, dejando columnas relevantes."""
     log("Transformando datos de empresas...")
     df = pd.read_csv(input_file)
 
@@ -24,7 +23,6 @@ def transformar_empresas(input_file, output_file):
     log(f"Empresas listas guardadas en: {output_file}")
 
 def transformar_precios_historicos(input_file, output_file):
-    """Transforma precios históricos: corrige columnas y formatos."""
     log("Transformando precios historicos (formato tidy)...")
     df = pd.read_csv(input_file)
 
@@ -46,7 +44,6 @@ def transformar_precios_historicos(input_file, output_file):
     log(f"Precios historicos listos guardados en: {output_file}")
 
 def transformar_indicadores_fundamentales(input_file, output_file):
-    """Transforma indicadores fundamentales, agrega ranking de market cap."""
     log("Transformando indicadores fundamentales...")
     df = pd.read_csv(input_file)
 
@@ -93,7 +90,6 @@ def calcular_obv(close, volume):
     return obv
 
 def calcular_indicadores_tecnicos(input_file, output_file):
-    """Calcula todos los indicadores técnicos sobre precios históricos."""
     log("Calculando indicadores técnicos...")
     df = pd.read_csv(input_file)
 
@@ -129,6 +125,142 @@ def calcular_indicadores_tecnicos(input_file, output_file):
     df_indicadores.to_csv(output_file, index=False)
     log(f"Indicadores técnicos listos guardados en: {output_file}")
 
+def calcular_resumen_inversion(
+    precios_tecnicos_file=DIR_READY + "indicadores_tecnicos_ready.csv",
+    fundamentales_file=DIR_READY + "indicadores_fundamentales_ready.csv",
+    precios_historicos_file=DIR_READY + "precios_historicos_ready.csv",
+    output_file=DIR_READY + "resumen_inversion_ready.csv"
+):
+    log("Calculando resumen de inversión...")
+
+    # Cargar datasets
+    df_tecnicos = pd.read_csv(precios_tecnicos_file)
+    df_fundamentales = pd.read_csv(fundamentales_file)
+    df_precios = pd.read_csv(precios_historicos_file)
+
+    # Tomar último registro por ticker
+    df_ultimos_tecnicos = df_tecnicos.sort_values('Date').groupby('Ticker').tail(1)
+    df_ultimos_precios = df_precios.sort_values('Date').groupby('Ticker').tail(1)[['Ticker', 'Close']]
+
+    # Merge
+    df = pd.merge(df_ultimos_tecnicos, df_fundamentales, on='Ticker', how='inner')
+    df = pd.merge(df, df_ultimos_precios, on='Ticker', how='left')
+
+    resultados = []
+
+    for _, row in tqdm(df.iterrows(), total=len(df)):
+        ticker = row['Ticker']
+
+        ### Análisis Técnico ###
+        señales_tec = {}
+        
+        # SMA vs EMA
+        if pd.notna(row['SMA_20']) and pd.notna(row['EMA_20']):
+            señales_tec['SMA_vs_EMA'] = 'COMPRAR' if row['SMA_20'] > row['EMA_20'] else 'VENDER'
+
+        # MACD
+        if pd.notna(row['MACD']) and pd.notna(row['MACD_Signal']):
+            señales_tec['MACD'] = 'COMPRAR' if row['MACD'] > row['MACD_Signal'] else 'VENDER'
+
+        # RSI
+        if pd.notna(row['RSI_14']):
+            if row['RSI_14'] < 30:
+                señales_tec['RSI'] = 'COMPRAR'
+            elif row['RSI_14'] > 70:
+                señales_tec['RSI'] = 'VENDER'
+            else:
+                señales_tec['RSI'] = 'MANTENER'
+
+        ### Análisis Fundamental ###
+        señales_fund = {}
+
+        # PER
+        if pd.notna(row['PER']):
+            if row['PER'] < 20:
+                señales_fund['PER'] = 'COMPRAR'
+            elif row['PER'] > 30:
+                señales_fund['PER'] = 'VENDER'
+            else:
+                señales_fund['PER'] = 'MANTENER'
+
+        # ROE
+        if pd.notna(row['ROE']):
+            if row['ROE'] > 0.15:
+                señales_fund['ROE'] = 'COMPRAR'
+            elif row['ROE'] < 0.05:
+                señales_fund['ROE'] = 'VENDER'
+            else:
+                señales_fund['ROE'] = 'MANTENER'
+
+        # EPS Growth YoY
+        if pd.notna(row['EPS Growth YoY']):
+            if row['EPS Growth YoY'] > 0.10:
+                señales_fund['EPS Growth YoY'] = 'COMPRAR'
+            elif row['EPS Growth YoY'] < 0:
+                señales_fund['EPS Growth YoY'] = 'VENDER'
+            else:
+                señales_fund['EPS Growth YoY'] = 'MANTENER'
+
+        # Deuda/Patrimonio
+        if pd.notna(row['Deuda/Patrimonio']):
+            if row['Deuda/Patrimonio'] < 100:
+                señales_fund['Deuda/Patrimonio'] = 'COMPRAR'
+            elif row['Deuda/Patrimonio'] > 200:
+                señales_fund['Deuda/Patrimonio'] = 'VENDER'
+            else:
+                señales_fund['Deuda/Patrimonio'] = 'MANTENER'
+
+        ### Estado de Bollinger Bands (solo informativo)
+        estado_bb = np.nan
+        if pd.notna(row['BB_Upper']) and pd.notna(row['BB_Lower']) and pd.notna(row['Close']):
+            if row['Close'] > row['BB_Upper']:
+                estado_bb = "Sobrecompra"
+            elif row['Close'] < row['BB_Lower']:
+                estado_bb = "Sobreventa"
+            else:
+                estado_bb = "Normal"
+
+        ### Cálculo Porcentajes ###
+        tec_buy = list(señales_tec.values()).count('COMPRAR')
+        tec_total = len(señales_tec)
+
+        fund_buy = list(señales_fund.values()).count('COMPRAR')
+        fund_total = len(señales_fund)
+
+        pct_tecnico_buy = round(tec_buy / tec_total * 100, 2) if tec_total > 0 else np.nan
+        pct_fundamental_buy = round(fund_buy / fund_total * 100, 2) if fund_total > 0 else np.nan
+
+        ### Decisión Final ###
+        if pct_tecnico_buy >= 66 and pct_fundamental_buy >= 66:
+            decision = "COMPRAR"
+        elif pct_tecnico_buy <= 33 and pct_fundamental_buy <= 33:
+            decision = "VENDER"
+        else:
+            decision = "MANTENER"
+
+        ### Resultado ###
+        resultados.append({
+            "Ticker": ticker,
+            "%_Tecnico_Buy": pct_tecnico_buy,
+            "%_Fundamental_Buy": pct_fundamental_buy,
+            "Decision_Final": decision,
+            "Estado_BollingerBands": estado_bb,
+            "SMA_vs_EMA": señales_tec.get('SMA_vs_EMA', np.nan),
+            "MACD": señales_tec.get('MACD', np.nan),
+            "RSI": señales_tec.get('RSI', np.nan),
+            "PER": señales_fund.get('PER', np.nan),
+            "ROE": señales_fund.get('ROE', np.nan),
+            "EPS Growth YoY": señales_fund.get('EPS Growth YoY', np.nan),
+            "Deuda/Patrimonio": señales_fund.get('Deuda/Patrimonio', np.nan)
+        })
+
+    # Guardar CSV
+    df_resultado = pd.DataFrame(resultados)
+    df_resultado.to_csv(output_file, index=False)
+
+    log(f"✅ Resumen de inversión listo: {output_file}")
+
+
 if __name__ == "__main__":
     tqdm.pandas()
 
@@ -151,3 +283,6 @@ if __name__ == "__main__":
         input_file=DIR_READY + "precios_historicos_ready.csv",
         output_file=DIR_READY + "indicadores_tecnicos_ready.csv"
     )
+
+    calcular_resumen_inversion()
+

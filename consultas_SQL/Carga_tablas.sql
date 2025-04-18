@@ -50,3 +50,18 @@ CREATE TABLE indicadores_tecnicos (
     PRIMARY KEY (date, ticker),
     FOREIGN KEY (ticker) REFERENCES empresas(ticker)
 );
+
+CREATE TABLE IF NOT EXISTS resumen_inversion (
+    ticker VARCHAR(10) PRIMARY KEY,
+    pct_tecnico_buy NUMERIC(5,2),
+    pct_fundamental_buy NUMERIC(5,2),
+    decision_final VARCHAR(20),
+    estado_bollingerbands VARCHAR(20),
+    sma_vs_ema VARCHAR(10),
+    macd VARCHAR(10),
+    rsi VARCHAR(10),
+    per VARCHAR(10),
+    roe VARCHAR(10),
+    eps_growth_yoy VARCHAR(10),
+    deuda_patrimonio VARCHAR(10)
+);

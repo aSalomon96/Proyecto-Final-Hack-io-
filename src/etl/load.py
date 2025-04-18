@@ -164,6 +164,57 @@ def upsert_indicadores_tecnicos(filepath):
     conn.close()
     print(f"✅ Indicadores técnicos: {len(df)} registros insertados.")
 
+def upsert_resumen_inversion(file_path):
+    """Carga o actualiza la tabla resumen_inversion."""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    df = pd.read_csv(file_path)
+
+    insert_query = """
+    INSERT INTO resumen_inversion (
+        ticker, pct_tecnico_buy, pct_fundamental_buy, decision_final,
+        estado_bollingerbands, sma_vs_ema, macd, rsi, per, roe, eps_growth_yoy, deuda_patrimonio
+    )
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ON CONFLICT (ticker) DO UPDATE SET
+        pct_tecnico_buy = EXCLUDED.pct_tecnico_buy,
+        pct_fundamental_buy = EXCLUDED.pct_fundamental_buy,
+        decision_final = EXCLUDED.decision_final,
+        estado_bollingerbands = EXCLUDED.estado_bollingerbands,
+        sma_vs_ema = EXCLUDED.sma_vs_ema,
+        macd = EXCLUDED.macd,
+        rsi = EXCLUDED.rsi,
+        per = EXCLUDED.per,
+        roe = EXCLUDED.roe,
+        eps_growth_yoy = EXCLUDED.eps_growth_yoy,
+        deuda_patrimonio = EXCLUDED.deuda_patrimonio;
+    """
+
+    print("🔄 Cargando tabla de RESUMEN DE INVERSIÓN...")
+
+    for _, row in tqdm(df.iterrows(), total=len(df)):
+        cursor.execute(insert_query, (
+            row['Ticker'],
+            row['%_Tecnico_Buy'],
+            row['%_Fundamental_Buy'],
+            row['Decision_Final'],
+            row['Estado_BollingerBands'],
+            row['SMA_vs_EMA'],
+            row['MACD'],
+            row['RSI'],
+            row['PER'],
+            row['ROE'],
+            row['EPS Growth YoY'],
+            row['Deuda/Patrimonio']
+        ))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+    print(f"✅ Resumen de inversión cargado: {len(df)} registros procesados.")
+
+
 if __name__ == "__main__":
     tqdm.pandas()
     
@@ -171,5 +222,7 @@ if __name__ == "__main__":
     upsert_precios_historicos("../../data/clean_data/precios_historicos_ready.csv")
     upsert_fundamentales("../../data/clean_data/indicadores_fundamentales_ready.csv")
     upsert_indicadores_tecnicos("../../data/clean_data/indicadores_tecnicos_ready.csv")
+    upsert_resumen_inversion("../../data/clean_data/resumen_inversion_ready.csv")
+
 
     print("\n🎯 ¡Carga completa sin errores!\n")
