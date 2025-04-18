@@ -1,6 +1,6 @@
 from ext_diario import actualizar_datos_historicos, actualizar_fundamentales
-from transform import transformar_empresas, transformar_precios_historicos, transformar_indicadores_fundamentales, calcular_indicadores_tecnicos
-from load import upsert_empresas, upsert_precios_historicos, upsert_fundamentales, upsert_indicadores_tecnicos
+from transform import transformar_empresas, transformar_precios_historicos, transformar_indicadores_fundamentales, calcular_indicadores_tecnicos,calcular_resumen_inversion 
+from load import upsert_empresas, upsert_precios_historicos, upsert_fundamentales, upsert_indicadores_tecnicos,upsert_resumen_inversion
 from tqdm import tqdm
 import os
 
@@ -46,6 +46,13 @@ def main():
     calcular_indicadores_tecnicos(
         input_file=DIR_READY + "precios_historicos_ready.csv",
         output_file=DIR_READY + "indicadores_tecnicos_ready.csv"
+    )    
+    
+    calcular_resumen_inversion(  
+        precios_tecnicos_file=DIR_READY + "indicadores_tecnicos_ready.csv",
+        fundamentales_file=DIR_READY + "indicadores_fundamentales_ready.csv",
+        precios_historicos_file=DIR_READY + "precios_historicos_ready.csv",
+        output_file=DIR_READY + "resumen_inversion_ready.csv"
     )
 
     # ================
@@ -56,8 +63,11 @@ def main():
     upsert_precios_historicos(DIR_READY + "precios_historicos_ready.csv")
     upsert_fundamentales(DIR_READY + "indicadores_fundamentales_ready.csv")
     upsert_indicadores_tecnicos(DIR_READY + "indicadores_tecnicos_ready.csv")
+    upsert_resumen_inversion(DIR_READY + "resumen_inversion_ready.csv") 
 
     print("\n🎯 ¡PROCESO COMPLETO SIN ERRORES! 🎯")
 
 if __name__ == "__main__":
     main()
+
+
