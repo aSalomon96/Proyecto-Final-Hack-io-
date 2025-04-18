@@ -1,0 +1,1 @@
+def generar_informe():
