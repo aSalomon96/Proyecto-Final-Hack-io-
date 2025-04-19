@@ -90,7 +90,8 @@ def calcular_obv(close, volume):
     return obv
 
 def calcular_indicadores_tecnicos(input_file, output_file):
-    log("Calculando indicadores técnicos...")
+    """Calcula indicadores técnicos + niveles de Fibonacci sobre precios históricos."""
+    log("Calculando indicadores técnicos y niveles de Fibonacci...")
     df = pd.read_csv(input_file)
 
     df['Date'] = pd.to_datetime(df['Date'])
@@ -100,6 +101,8 @@ def calcular_indicadores_tecnicos(input_file, output_file):
 
     for ticker, group in tqdm(df.groupby('Ticker')):
         group = group.copy()
+
+        # Cálculo de indicadores tradicionales
         group['SMA_20'] = group['Close'].rolling(window=20).mean()
         group['SMA_50'] = group['Close'].rolling(window=50).mean()
         group['EMA_20'] = group['Close'].ewm(span=20, adjust=False).mean()
@@ -116,14 +119,53 @@ def calcular_indicadores_tecnicos(input_file, output_file):
 
         group['Volatility_20'] = group['Close'].rolling(window=20).std()
 
-        indicadores.append(group[['Date', 'Ticker', 'SMA_20', 'SMA_50', 'EMA_20',
+        # Cálculo de Niveles Fibonacci
+        max_close = group['Close'].max()
+        min_close = group['Close'].min()
+        diff = max_close - min_close
+
+        group['Fib_0.0%'] = max_close
+        group['Fib_23.6%'] = max_close - diff * 0.236
+        group['Fib_38.2%'] = max_close - diff * 0.382
+        group['Fib_50.0%'] = max_close - diff * 0.50
+        group['Fib_61.8%'] = max_close - diff * 0.618
+        group['Fib_100%'] = min_close
+
+        # Último Close del ticker
+        ultimo_close = group.iloc[-1]['Close']
+
+        diffs = {
+            '0.0%': abs(ultimo_close - group.iloc[-1]['Fib_0.0%']),
+            '23.6%': abs(ultimo_close - group.iloc[-1]['Fib_23.6%']),
+            '38.2%': abs(ultimo_close - group.iloc[-1]['Fib_38.2%']),
+            '50.0%': abs(ultimo_close - group.iloc[-1]['Fib_50.0%']),
+            '61.8%': abs(ultimo_close - group.iloc[-1]['Fib_61.8%']),
+            '100%': abs(ultimo_close - group.iloc[-1]['Fib_100%'])
+        }
+        nivel_cercano = min(diffs, key=diffs.get)
+
+        if nivel_cercano in ['38.2%', '50.0%', '61.8%']:
+            estado_fib = 'SOPORTE'
+        elif nivel_cercano in ['0.0%', '23.6%']:
+            estado_fib = 'RESISTENCIA'
+        else:
+            estado_fib = 'NEUTRO'
+
+        group['Nivel_Fib_Cercano'] = nivel_cercano
+        group['Estado_Fibonacci'] = estado_fib
+
+        indicadores.append(group[['Date', 'Ticker', 'Close',
+                                  'SMA_20', 'SMA_50', 'EMA_20',
                                   'RSI_14', 'MACD', 'MACD_Signal', 'MACD_Hist',
-                                  'ATR_14', 'OBV', 'BB_Middle', 'BB_Upper', 'BB_Lower',
-                                  'Volatility_20']])
+                                  'ATR_14', 'OBV',
+                                  'BB_Middle', 'BB_Upper', 'BB_Lower',
+                                  'Volatility_20',
+                                  'Fib_0.0%', 'Fib_23.6%', 'Fib_38.2%', 'Fib_50.0%', 'Fib_61.8%', 'Fib_100%',
+                                  'Nivel_Fib_Cercano', 'Estado_Fibonacci']])
 
     df_indicadores = pd.concat(indicadores)
     df_indicadores.to_csv(output_file, index=False)
-    log(f"Indicadores técnicos listos guardados en: {output_file}")
+    log(f"Indicadores técnicos + Fibonacci guardados en: {output_file}")
 
 def calcular_resumen_inversion(
     precios_tecnicos_file=DIR_READY + "indicadores_tecnicos_ready.csv",
@@ -131,7 +173,7 @@ def calcular_resumen_inversion(
     precios_historicos_file=DIR_READY + "precios_historicos_ready.csv",
     output_file=DIR_READY + "resumen_inversion_ready.csv"
 ):
-    log("Calculando resumen de inversión...")
+    print("🔍 Calculando resumen detallado de inversión...")
 
     # Cargar datasets
     df_tecnicos = pd.read_csv(precios_tecnicos_file)
@@ -144,11 +186,13 @@ def calcular_resumen_inversion(
 
     # Merge
     df = pd.merge(df_ultimos_tecnicos, df_fundamentales, on='Ticker', how='inner')
-    df = pd.merge(df, df_ultimos_precios, on='Ticker', how='left')
+    # Elimina esta línea, porque no hace falta:
+    # df = pd.merge(df, df_ultimos_precios, on='Ticker', how='left')
 
     resultados = []
 
     for _, row in tqdm(df.iterrows(), total=len(df)):
+
         ticker = row['Ticker']
 
         ### Análisis Técnico ###
@@ -171,6 +215,26 @@ def calcular_resumen_inversion(
             else:
                 señales_tec['RSI'] = 'MANTENER'
 
+        ### Estado de Bollinger Bands (solo informativo)
+        estado_bb = np.nan
+        if pd.notna(row['BB_Upper']) and pd.notna(row['BB_Lower']) and pd.notna(row['Close']):
+            if row['Close'] > row['BB_Upper']:
+                estado_bb = "Sobrecompra"
+            elif row['Close'] < row['BB_Lower']:
+                estado_bb = "Sobreventa"
+            else:
+                estado_bb = "Normal"
+        
+        ### Estado de Fibonacci ###
+        estado_fib = np.nan
+        if 'Estado_Fibonacci' in row and pd.notna(row['Estado_Fibonacci']):
+            if row['Estado_Fibonacci'] == 'SOPORTE':
+                señales_tec['Estado_Fibonacci'] = 'COMPRAR'
+            elif row['Estado_Fibonacci'] == 'RESISTENCIA':
+                señales_tec['Estado_Fibonacci'] = 'VENDER'
+            else:
+                señales_tec['Estado_Fibonacci'] = 'MANTENER'
+
         ### Análisis Fundamental ###
         señales_fund = {}
 
@@ -192,7 +256,7 @@ def calcular_resumen_inversion(
             else:
                 señales_fund['ROE'] = 'MANTENER'
 
-        # EPS Growth YoY
+        # EPS Growth
         if pd.notna(row['EPS Growth YoY']):
             if row['EPS Growth YoY'] > 0.10:
                 señales_fund['EPS Growth YoY'] = 'COMPRAR'
@@ -210,30 +274,23 @@ def calcular_resumen_inversion(
             else:
                 señales_fund['Deuda/Patrimonio'] = 'MANTENER'
 
-        ### Estado de Bollinger Bands (solo informativo)
-        estado_bb = np.nan
-        if pd.notna(row['BB_Upper']) and pd.notna(row['BB_Lower']) and pd.notna(row['Close']):
-            if row['Close'] > row['BB_Upper']:
-                estado_bb = "Sobrecompra"
-            elif row['Close'] < row['BB_Lower']:
-                estado_bb = "Sobreventa"
-            else:
-                estado_bb = "Normal"
+        ### 3. Conteo de Señales de Compra y Venta
 
-        ### Cálculo Porcentajes ###
-        tec_buy = list(señales_tec.values()).count('COMPRAR')
-        tec_total = len(señales_tec)
+        compras = list(señales_tec.values()).count('COMPRAR') + list(señales_fund.values()).count('COMPRAR')
+        ventas = list(señales_tec.values()).count('VENDER') + list(señales_fund.values()).count('VENDER')
 
-        fund_buy = list(señales_fund.values()).count('COMPRAR')
-        fund_total = len(señales_fund)
+        pct_tecnico_buy = round(
+            list(señales_tec.values()).count('COMPRAR') / len(señales_tec) * 100, 2
+        ) if len(señales_tec) > 0 else np.nan
 
-        pct_tecnico_buy = round(tec_buy / tec_total * 100, 2) if tec_total > 0 else np.nan
-        pct_fundamental_buy = round(fund_buy / fund_total * 100, 2) if fund_total > 0 else np.nan
+        pct_fundamental_buy = round(
+            list(señales_fund.values()).count('COMPRAR') / len(señales_fund) * 100, 2
+        ) if len(señales_fund) > 0 else np.nan
 
-        ### Decisión Final ###
-        if pct_tecnico_buy >= 66 and pct_fundamental_buy >= 66:
+        ### 4. Decisión Final basada en mayoría simple
+        if compras > ventas:
             decision = "COMPRAR"
-        elif pct_tecnico_buy <= 33 and pct_fundamental_buy <= 33:
+        elif ventas > compras:
             decision = "VENDER"
         else:
             decision = "MANTENER"
@@ -251,14 +308,15 @@ def calcular_resumen_inversion(
             "PER": señales_fund.get('PER', np.nan),
             "ROE": señales_fund.get('ROE', np.nan),
             "EPS Growth YoY": señales_fund.get('EPS Growth YoY', np.nan),
-            "Deuda/Patrimonio": señales_fund.get('Deuda/Patrimonio', np.nan)
+            "Deuda/Patrimonio": señales_fund.get('Deuda/Patrimonio', np.nan),
+            "Estado_Fibonacci": row['Estado_Fibonacci']
         })
 
     # Guardar CSV
     df_resultado = pd.DataFrame(resultados)
     df_resultado.to_csv(output_file, index=False)
 
-    log(f"✅ Resumen de inversión listo: {output_file}")
+    print(f"✅ Resumen de inversión detallado generado: {output_file}")
 
 
 if __name__ == "__main__":
