@@ -1,4 +1,4 @@
-# 📈 Proyecto Final: ETL y Análisis de Acciones del NYSE
+# 📈 Proyecto Final: Análisis de Acciones del NYSE
 
 ---
 
@@ -6,7 +6,12 @@
 
 Este proyecto implementa un pipeline ETL (Extracción, Transformación y Carga) completo para construir una base de datos actualizada diariamente con información sobre las 500 empresas de mayor capitalización bursátil del NYSE (S&P 500).
 
-Permite analizar precios históricos, fundamentos financieros y calcular indicadores técnicos clave para estrategias de trading y análisis de inversión.
+Permite:
+- Descargar y limpiar datos de precios históricos y fundamentales.
+- Calcular indicadores técnicos y fundamentales clave.
+- Almacenar todo en PostgreSQL para su posterior análisis y modelado.
+- Generar reportes y dashboards para apoyar decisiones de inversión.
+
 
 ---
 
@@ -14,14 +19,13 @@ Permite analizar precios históricos, fundamentos financieros y calcular indicad
 
 ### Objetivos Mínimos:
 - Extracción de datos históricos y fundamentales usando Yahoo Finance (`yfinance`).
-- Transformación, limpieza y cálculo de indicadores técnicos.
+- Transformación, limpieza y cálculo de indicadores técnicos (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, OBV, Volatilidad, Fibonacci) y fundamentales (PER, ROE, EPS Growth, Deuda/Patrimonio, Market Cap, Dividend Yield).
 - Almacenamiento en base de datos relacional PostgreSQL.
 - Análisis Exploratorio de Datos (EDA).
 - Desarrollo de dashboards de visualización en Power BI.
 
 ### Objetivos Plus:
 - Automatización diaria de la actualización de datos.
-- Creación de la tabla `resumen_inversion` (señales combinadas de compra/venta).
 - Democratizar el acceso a datos financieros de calidad para pequeños inversores.
 
 ---
@@ -31,9 +35,25 @@ Permite analizar precios históricos, fundamentos financieros y calcular indicad
 | Fase | Scripts | Descripción |
 |:----|:--------|:------------|
 | **Extracción** | `ext.py`, `ext_diario.py` | Descarga inicial y actualización diaria de datos desde Yahoo Finance y Wikipedia. |
-| **Transformación** | `transform.py` | Limpieza de datasets y cálculo de indicadores técnicos: SMA, EMA, RSI, MACD, ATR, OBV, Volatilidad, Bollinger Bands. |
+| **Transformación** | `transform.py` |  Limpieza de datos y cálculo de indicadores técnicos y fundamentales. |
 | **Carga** | `load.py` | Inserción incremental en PostgreSQL, controlando duplicados y actualizaciones. |
 | **Orquestación** | `main.py` | Automatización completa del proceso ETL. |
+
+---
+## 📊 Variables de Interés
+
+- **Históricos**: Open, High, Low, Close, Volume.  
+- **Fundamentales**: PER, ROE, EPS Growth, Deuda/Patrimonio, Market Cap, Dividend Yield, Sector, Industria.  
+- **Técnicos**:  
+  - **Media Móvil Simple (SMA)**  
+  - **Media Móvil Exponencial (EMA)**  
+  - **Relative Strength Index (RSI)**  
+  - **MACD**  
+  - **Bollinger Bands**  
+  - **Average True Range (ATR)**  
+  - **On-Balance Volume (OBV)**  
+  - **Volatilidad Histórica**  
+  - **Niveles de Fibonacci**  
 
 ---
 
@@ -42,7 +62,8 @@ Permite analizar precios históricos, fundamentos financieros y calcular indicad
 - **empresas_ready.csv**: Información básica (Ticker, Nombre, Sector, Industria).
 - **precios_historicos_ready.csv**: Precios diarios (Open, High, Low, Close, Volume).
 - **indicadores_fundamentales_ready.csv**: PER, ROE, Deuda/Patrimonio, Margen Neto, etc.
-- **indicadores_tecnicos_ready.csv**: SMA, EMA, RSI, MACD, ATR, OBV, Volatilidad, Bollinger Bands.
+- **indicadores_tecnicos_ready.csv**: SMA, EMA, RSI, MACD, ATR, OBV, Volatilidad, Bollinger Bands y niveles de Fibonacci.
+- **resumen_inversion.csv**: Decision Final de compra o venta para cada indicador tecnico y fundamental.
 
 ---
 
