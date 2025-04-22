@@ -30,7 +30,7 @@ Permite:
 
 ---
 
-## 🧩 Estructura del Pipeline
+## 🧩 Estructura del Pipeline ETL
 
 | Fase | Scripts | Descripción |
 |:----|:--------|:------------|
@@ -63,6 +63,7 @@ Permite:
 - **precios_historicos_ready.csv**: Precios diarios (Open, High, Low, Close, Volume).
 - **indicadores_fundamentales_ready.csv**: PER, ROE, Deuda/Patrimonio, Margen Neto, etc.
 - **indicadores_tecnicos_ready.csv**: SMA, EMA, RSI, MACD, ATR, OBV, Volatilidad, Bollinger Bands y niveles de Fibonacci.
+- **precios_variacion_ready.csv**: Calculo de variaciones diarias, semanal, mensual, anual y cada 5 años.
 - **resumen_inversion.csv**: Decision Final de compra o venta para cada indicador tecnico y fundamental.
 
 ---
