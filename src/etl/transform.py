@@ -318,6 +318,38 @@ def calcular_resumen_inversion(
 
     print(f"✅ Resumen de inversión detallado generado: {output_file}")
 
+def calcular_variaciones_precios(input_file=DIR_READY + "precios_historicos_ready.csv",
+                                 output_file=DIR_READY + "precios_variaciones_ready.csv"):
+    """
+    Calcula variaciones porcentuales diarias, semanales, mensuales, anuales y a 5 años de los precios de cierre.
+
+    Args:
+        input_file (str): Ruta del archivo de precios históricos limpio.
+        output_file (str): Ruta donde guardar el nuevo archivo de variaciones.
+    """
+    log("Calculando variaciones porcentuales de precios...")
+
+    df = pd.read_csv(input_file, parse_dates=["Date"])[["Date", "Ticker", "Close"]]
+
+    df = df.sort_values(["Ticker", "Date"])
+
+    periods = {
+        "daily": 1,
+        "weekly": 5,
+        "monthly": 21,
+        "annual": 252,
+        "5y": 252 * 5
+    }
+
+    for name, days in periods.items():
+        df[f"var_{name}"] = df.groupby("Ticker")["Close"].pct_change(periods=days).round(4)
+
+    cols = ["Date", "Ticker", "Close"] + [f"var_{name}" for name in periods]
+    df_variaciones = df[cols]
+
+    df_variaciones.to_csv(output_file, index=False)
+    log(f"Variaciones de precios guardadas en: {output_file}")
+
 
 if __name__ == "__main__":
     tqdm.pandas()
@@ -343,4 +375,10 @@ if __name__ == "__main__":
     )
 
     calcular_resumen_inversion()
+
+    calcular_variaciones_precios(
+    input_file=DIR_READY + "precios_historicos_ready.csv",
+    output_file=DIR_READY + "precios_variaciones_ready.csv"
+)
+
 

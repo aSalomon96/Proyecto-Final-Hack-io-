@@ -140,20 +140,22 @@ def upsert_indicadores_tecnicos(csv_path):
 
     if df.empty:
         print("ℹ️ No hay nuevos indicadores técnicos para cargar.")
+        conn.close()
         return
 
     print("📈 Cargando nuevos indicadores técnicos...")
     for _, row in tqdm(df.iterrows(), total=len(df)):
         insert_query = """
             INSERT INTO indicadores_tecnicos (
-                date, ticker, sma_20, sma_50, ema_20, rsi_14,
+                date, ticker, close,
+                sma_20, sma_50, ema_20, rsi_14,
                 macd, macd_signal, macd_hist, atr_14, obv,
                 bb_middle, bb_upper, bb_lower, volatility_20,
                 fib_0_0, fib_23_6, fib_38_2, fib_50_0, fib_61_8, fib_100,
                 nivel_fib_cercano, estado_fibonacci
-            ) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (date, ticker) DO UPDATE SET
+                close = EXCLUDED.close,
                 sma_20 = EXCLUDED.sma_20,
                 sma_50 = EXCLUDED.sma_50,
                 ema_20 = EXCLUDED.ema_20,
@@ -177,7 +179,15 @@ def upsert_indicadores_tecnicos(csv_path):
                 estado_fibonacci = EXCLUDED.estado_fibonacci
             ;
         """
-        cursor.execute(insert_query, tuple(row))
+        cursor.execute(insert_query, (
+            row['Date'], row['Ticker'], row['Close'],
+            row['SMA_20'], row['SMA_50'], row['EMA_20'], row['RSI_14'],
+            row['MACD'], row['MACD_Signal'], row['MACD_Hist'],
+            row['ATR_14'], row['OBV'],
+            row['BB_Middle'], row['BB_Upper'], row['BB_Lower'], row['Volatility_20'],
+            row['Fib_0.0%'], row['Fib_23.6%'], row['Fib_38.2%'], row['Fib_50.0%'], row['Fib_61.8%'], row['Fib_100%'],
+            row['Nivel_Fib_Cercano'], row['Estado_Fibonacci']
+        ))
 
     conn.commit()
     conn.close()
@@ -235,6 +245,51 @@ def upsert_resumen_inversion(csv_path):
     conn.close()
     print(f"✅ Resumen de inversión cargado correctamente ({len(df)} registros nuevos).")
 
+def upsert_precios_variaciones(csv_path):
+    """Carga incremental de variaciones de precios."""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    df = pd.read_csv(csv_path)
+    df['Date'] = pd.to_datetime(df['Date'])
+
+    cursor.execute("SELECT MAX(date) FROM precios_variaciones;")
+    max_date_db = cursor.fetchone()[0]
+    
+    if max_date_db:
+        max_date_db = pd.to_datetime(max_date_db)
+        df = df[df['Date'] > max_date_db]
+
+    if df.empty:
+        print("ℹ️ No hay nuevas variaciones de precios para cargar.")
+        conn.close()
+        return
+
+    print("📈 Cargando nuevas variaciones de precios...")
+    for _, row in tqdm(df.iterrows(), total=len(df)):
+        insert_query = """
+            INSERT INTO precios_variaciones (
+                date, ticker, close,
+                var_daily, var_weekly, var_monthly, var_annual, var_5y
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (date, ticker) DO UPDATE SET
+                close = EXCLUDED.close,
+                var_daily = EXCLUDED.var_daily,
+                var_weekly = EXCLUDED.var_weekly,
+                var_monthly = EXCLUDED.var_monthly,
+                var_annual = EXCLUDED.var_annual,
+                var_5y = EXCLUDED.var_5y
+            ;
+        """
+        cursor.execute(insert_query, (
+            row['Date'], row['Ticker'], row['Close'],
+            row['var_daily'], row['var_weekly'], row['var_monthly'],
+            row['var_annual'], row['var_5y']
+        ))
+
+    conn.commit()
+    conn.close()
+    print(f"✅ Variaciones de precios cargadas correctamente ({len(df)} registros nuevos).")
 
 if __name__ == "__main__":
     print("⚙️ Ejecutando pruebas de carga manual...")
@@ -247,5 +302,7 @@ if __name__ == "__main__":
     upsert_fundamentales(DIR_READY + "indicadores_fundamentales_ready.csv")
     upsert_indicadores_tecnicos(DIR_READY + "indicadores_tecnicos_ready.csv")
     upsert_resumen_inversion(DIR_READY + "resumen_inversion_ready.csv")
+    upsert_precios_variaciones(DIR_READY + "precios_variaciones_ready.csv")
+
 
     print("\n✅ ¡Carga de todas las tablas finalizada correctamente!")

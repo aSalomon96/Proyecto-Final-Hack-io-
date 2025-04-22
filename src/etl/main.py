@@ -1,6 +1,6 @@
 from ext_diario import actualizar_datos_historicos, actualizar_fundamentales
-from transform import transformar_empresas, transformar_precios_historicos, transformar_indicadores_fundamentales, calcular_indicadores_tecnicos,calcular_resumen_inversion 
-from load import upsert_empresas, upsert_precios_historicos, upsert_fundamentales, upsert_indicadores_tecnicos,upsert_resumen_inversion
+from transform import transformar_empresas, transformar_precios_historicos, transformar_indicadores_fundamentales, calcular_indicadores_tecnicos,calcular_resumen_inversion, calcular_variaciones_precios 
+from load import upsert_empresas, upsert_precios_historicos, upsert_fundamentales, upsert_indicadores_tecnicos,upsert_resumen_inversion, upsert_precios_variaciones
 from tqdm import tqdm
 import os
 
@@ -54,6 +54,10 @@ def main():
         precios_historicos_file=DIR_READY + "precios_historicos_ready.csv",
         output_file=DIR_READY + "resumen_inversion_ready.csv"
     )
+    calcular_variaciones_precios(
+        input_file=DIR_READY + "precios_historicos_ready.csv",
+        output_file=DIR_READY + "precios_variaciones_ready.csv"
+    )
 
     # ================
     # CARGA
@@ -63,7 +67,8 @@ def main():
     upsert_precios_historicos(DIR_READY + "precios_historicos_ready.csv")
     upsert_fundamentales(DIR_READY + "indicadores_fundamentales_ready.csv")
     upsert_indicadores_tecnicos(DIR_READY + "indicadores_tecnicos_ready.csv")
-    upsert_resumen_inversion(DIR_READY + "resumen_inversion_ready.csv") 
+    upsert_resumen_inversion(DIR_READY + "resumen_inversion_ready.csv")
+    upsert_precios_variaciones(DIR_READY + "precios_variaciones_ready.csv")
 
     print("\n🎯 ¡PROCESO COMPLETO SIN ERRORES! 🎯")
 
