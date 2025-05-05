@@ -65,12 +65,14 @@ def descargar_datos_historicos(tickers_csv_path: str,
     return data_tidy
 
 
+
 def extract_fundamentals_indicators(
     info_csv="../../data/raw_data/top_500_marketcap.csv",
     output_file="../../data/raw_data/nyse_top_500_fundamentals_indicators.csv"
 ):
     """
-    Extrae indicadores fundamentales para cada ticker que aparece en el CSV inicial.
+    Extrae indicadores fundamentales para cada ticker que aparece en el CSV inicial,
+    incluyendo acciones en circulación.
     """
     try:
         tickers_df = pd.read_csv(info_csv)
@@ -88,7 +90,8 @@ def extract_fundamentals_indicators(
         "Margen Neto": "profitMargins",
         "Dividend Yield": "dividendYield",
         "Industria": "industry",
-        "Sector": "sector"
+        "Sector": "sector",
+        "Acciones en Circulación": "sharesOutstanding"  # campo agregado
     }
 
     fundamentals_list = []
@@ -119,6 +122,7 @@ def extract_fundamentals_indicators(
     print(f"✅ Tabla de indicadores fundamentales guardada en: {output_file}")
 
 
+
 if __name__ == "__main__":
     # Rutas
     marketcap_path = "../../data/raw_data/top_500_marketcap.csv"
@@ -131,7 +135,7 @@ if __name__ == "__main__":
     descargar_datos_historicos(
         tickers_csv_path=marketcap_path,
         salida_csv_path=historicos_path,
-        fecha_inicio="2015-01-01"
+        fecha_inicio="2007-01-01"
     )
 
     extract_fundamentals_indicators(

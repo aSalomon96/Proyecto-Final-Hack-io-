@@ -61,7 +61,8 @@ def actualizar_fundamentales(
     output_file="../../data/raw_data/nyse_top_500_fundamentals_indicators.csv"
 ):
     """
-    Re-extrae la tabla de fundamentales con datos actualizados.
+    Re-extrae la tabla de fundamentales con datos actualizados,
+    incluyendo acciones en circulación.
     """
     print("📊 Reextrayendo fundamentales...")
 
@@ -81,7 +82,8 @@ def actualizar_fundamentales(
         "Margen Neto": "profitMargins",
         "Dividend Yield": "dividendYield",
         "Industria": "industry",
-        "Sector": "sector"
+        "Sector": "sector",
+        "Acciones en Circulación": "sharesOutstanding"  # nuevo campo
     }
 
     data_fundamentals = []
@@ -108,7 +110,6 @@ def actualizar_fundamentales(
     df = pd.DataFrame(data_fundamentals)
     df.to_csv(output_file, index=False)
     print(f"✅ Fundamentales actualizados: {output_file}")
-
 
 if __name__ == "__main__":
     actualizar_datos_historicos()

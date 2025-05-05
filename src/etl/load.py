@@ -98,8 +98,8 @@ def upsert_fundamentales(filepath):
 
     insert_query = """
     INSERT INTO indicadores_fundamentales (ticker, per, roe, eps_growth_yoy, deuda_patrimonio,
-                                           margen_neto, dividend_yield, market_cap, ranking_marketcap)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                           margen_neto, dividend_yield, market_cap, ranking_marketcap, acciones_circulacion)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT (ticker) DO UPDATE SET
         per = EXCLUDED.per,
         roe = EXCLUDED.roe,
@@ -108,14 +108,15 @@ def upsert_fundamentales(filepath):
         margen_neto = EXCLUDED.margen_neto,
         dividend_yield = EXCLUDED.dividend_yield,
         market_cap = EXCLUDED.market_cap,
-        ranking_marketcap = EXCLUDED.ranking_marketcap;
+        ranking_marketcap = EXCLUDED.ranking_marketcap,
+        acciones_circulacion = EXCLUDED.acciones_circulacion;
     """
     print("\n📊 Cargando tabla de FUNDAMENTALES...")
     for _, row in tqdm(df.iterrows(), total=len(df)):
         cursor.execute(insert_query, (
             row['Ticker'], row['PER'], row['ROE'], row['EPS Growth YoY'],
             row['Deuda/Patrimonio'], row['Margen Neto'], row['Dividend Yield'],
-            row['Market Cap'], row['Ranking MarketCap']
+            row['Market Cap'], row['Ranking MarketCap'], row['Acciones en Circulación']
         ))
 
     conn.commit()

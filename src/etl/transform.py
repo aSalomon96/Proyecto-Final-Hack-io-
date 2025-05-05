@@ -49,7 +49,7 @@ def transformar_indicadores_fundamentales(input_file, output_file):
 
     columnas_finales = [
         "Ticker", "Name", "PER", "ROE", "EPS Growth YoY",
-        "Deuda/Patrimonio", "Margen Neto", "Dividend Yield", "Market Cap"
+        "Deuda/Patrimonio", "Margen Neto", "Dividend Yield", "Market Cap", "Acciones en Circulación"
     ]
 
     df = df[columnas_finales]
